@@ -2,63 +2,68 @@ import java.util.*;
 import java.util.concurrent.atomic.*;
 
 class Main {
-  static AtomicInteger[] counts;
-  static int WIDTH = 16;
-  static int OPS = 1000;
+  static AtomicLong63Array shared;
+  static int TS = 5;
+  static int K = 20;
   // bitonic: bitonic counting network of WIDTH
   // counts: atomic integers incremented by threads
   // WIDTH: number of threads / width of network
   // OPS: number of increments
 
+
   // Each unbalanced thread tries to increment a
   // random count. At the end, the counts would
   // not be balanced.
-  // 
+  static Thread withoutKCSS(int id) {
+    return new Thread(() -> {
+      long y = id+1;
+      for (int n=0; n<K; n++)
+        shared.set(n, y);
+      log(id+": done");
+    });
+  } 
+
   // Each balanced thread tries to increment a
   // random count, but this time, selected through
   // a bitonic network. At the end, the counts
   // should be balanced.
-  static Thread thread(int id, boolean balance) {
+  static Thread withKCSS(int id) {
     return new Thread(() -> {
-      for (int i=0; i<OPS; i++) {
-        int c = (int) (WIDTH * Math.random());
-        if (balance) c = bitonic.traverse(c);
-        counts[c].incrementAndGet();
-        Thread.yield();
+      int[] i = new int[K];
+      long[] e = new long[K];
+      for (int n=0; n<K; n++) {
+        i[n] = n;
+        e[n] = id;
+      }
+      long y = id+1;
+      for (int n=0; n<K; n++) {
+        i = Arrays.copyOfRange(i, n, K);
+        e = Arrays.copyOfRange(e, n, K);
+        while (!shared.compareAndSet(i, e, y));
       }
       log(id+": done");
     });
   }
 
-  // Initialize bitonic network and counts.
-  static void setup() {
-    bitonic = new KCSS(WIDTH);
-    counts = new AtomicInteger[WIDTH];
-    for (int i=0; i<WIDTH; i++)
-      counts[i] = new AtomicInteger(0);
-  }
-
-  // Test either unbalanced or balanced threads.
-  static void testThreads(boolean balance) {
-    setup();
-    Thread[] t = new Thread[WIDTH];
-    for (int i=0; i<WIDTH; i++) {
-      t[i] = thread(i, balance);
+  // Test with or without KCSS.
+  static void testThreads(boolean kcss) {
+    shared = new AtomicLong63Array(K);
+    Thread[] t = new Thread[TS];
+    for (int i=0; i<TS; i++) {
+      t[i] = kcss? withKCSS(i) : withoutKCSS(i);
       t[i].start();
     }
     try {
-    for (int i=0; i<WIDTH; i++)
+    for (int i=0; i<K; i++)
       t[i].join();
     }
     catch(InterruptedException e) {}
   }
 
-  // Check if counts are balanced. At maximum
-  // counts should be separated by 1.
-  static boolean isBalanced() {
-    int v = counts[0].get();
-    for (int i=0; i<WIDTH; i++)
-      if (v-counts[i].get() > 1) return false;
+  // Check if shared data was updated atomically.
+  static boolean wasAtomic() {
+    for (int n=0; n<K; n++)
+      if (shared.get(n) != K-1) return false;
     return true;
   }
 
@@ -66,15 +71,14 @@ class Main {
   // to check if counts stay balanced after they
   // run their increments.
   public static void main(String[] args) {
-    log("Starting unbalanced threads ...");
+    log("Starting threads without KCSS ...");
     testThreads(false);
-    log(Arrays.deepToString(counts));
-    log("Counts balanced? "+isBalanced());
+    log("Updates were atomic? "+wasAtomic());
     log("");
-    log("Starting balanced threads ...");
+    log("Starting threads with KCSS ...");
     testThreads(true);
-    log(Arrays.deepToString(counts));
-    log("Counts balanced? "+isBalanced());
+    // log(Arrays.deepToString(counts));
+    log("Updates were atomic? "+wasAtomic());
   }
 
   static void log(String x) {

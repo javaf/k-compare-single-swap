@@ -27,9 +27,25 @@ class AtomicLong63Array {
     return read(i);
   }
 
-  public void set(int i, long x) {
-    data[i] = x<<1;
+  // Sets value at index i.
+  public void set(int i, long v) {
+    data[i] = newValue(v);
   }
+
+  public boolean compareAndSet
+    (int i, long e, long y) {
+    return cas(i, newValue(e), newValue(y));
+  }
+
+  public boolean compareAndSet
+    (int[] i, long[] e, long y) {
+    int N = i.length;
+    long[] x = new long[N];
+    for (int n=0; n<N; n++)
+      x[n] = newValue(e[n]);
+    return kcss(i, x, y);
+  }
+
 
   // Performs k-compare-single-swap at indices i.
   // 1. Load linked value at i0.
