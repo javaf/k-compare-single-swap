@@ -7,7 +7,7 @@ import java.util.*;
 // inputs. Outputs of both Bitonic[K] are connected
 // directly to Merger[2K]. Bitonic[2] networks
 // consists of a single Balancer.
-class AtomicLong63Array {
+class AtomicLong63Array implements Iterable {
   long[] data;
   ThreadLocal<Long> tag;
   ThreadLocal<Long> save;
@@ -18,6 +18,11 @@ class AtomicLong63Array {
     tag = new ThreadLocal<>() {
       protected Long initialValue() {
         return newTag(0);
+      }
+    };
+    save = new ThreadLocal<>() {
+      protected Long initialValue() {
+        return newValue(0);
       }
     };
   }
@@ -55,6 +60,7 @@ class AtomicLong63Array {
   // 3b. Otherwise, store conditional new value.
   // 3c. Retry if that failed.
   private boolean kcss(int[] i, long[] e, long y) {
+    //System.out.println("kcss() ->");
     int N = i.length;
     int[] i1 = Arrays.copyOfRange(i, 1, N);
     long[] e1 = Arrays.copyOfRange(e, 1, N);
@@ -64,9 +70,13 @@ class AtomicLong63Array {
       if (x0 != e[0] ||                  // 3
           Arrays.compare(x1, e1) != 0) { // 3
         sc(i[0], x0); // 3a
+        //System.out.println("kcss() <-");
         return false; // 3a
       }
-      if (sc(i[0], y)) return true; // 3b
+      if (sc(i[0], y)) {
+        //System.out.println("kcss() <-");
+        return true; // 3b
+      }
     } // 3c
   }
 
@@ -79,6 +89,7 @@ class AtomicLong63Array {
   // 5a. If they match, return values.
   // 5b. Otherwise, retry.
   private long[] snapshot(int[] i) {
+    // System.out.println("snapshot() ->");
     while (true) {
       long[] ta = collectTags(i);
       long[] va = collectValues(i);
@@ -86,7 +97,10 @@ class AtomicLong63Array {
       long[] tb = collectTags(i);
       if (Arrays.compare(ta, tb) == 0 &&
           Arrays.compare(va, vb) == 0)
-        return va;
+        {
+          // System.out.println("snapshot() <-");
+          return va;
+        }
     }
   }
 
@@ -123,11 +137,15 @@ class AtomicLong63Array {
   // 4. Try replacing it with tag.
   // 5. Otherwise, retry.
   private long ll(int i) {
+    //System.out.println("ll("+i+") ->");
     while (true) {
       incTag();
       long x = read(i);
       save.set(x);
-      if (cas(i, x, tag.get())) return x;
+      if (cas(i, x, tag.get())) {
+        //System.out.println("ll("+i+") <-");
+        return x;
+      }
     }
   }
 
@@ -136,9 +154,13 @@ class AtomicLong63Array {
   // 2. If its not a tag, return its value.
   // 3. Otherwise, reset it and retry.
   private long read(int i) {
+    //System.out.println("read("+i+") ->");
     while (true) {
       long x = data[i];
-      if (!isTag(x)) return value(x);
+      if (!isTag(x)) {
+        //System.out.println("read("+i+") <-");
+        return value(x);
+      }
       reset(i);
     }
   }

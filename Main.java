@@ -3,7 +3,7 @@ import java.util.concurrent.atomic.*;
 
 class Main {
   static AtomicLong63Array shared;
-  static int TS = 5;
+  static int TS = 1;
   static int K = 20;
   // bitonic: bitonic counting network of WIDTH
   // counts: atomic integers incremented by threads
@@ -39,7 +39,9 @@ class Main {
       for (int n=0; n<K; n++) {
         i = Arrays.copyOfRange(i, n, K);
         e = Arrays.copyOfRange(e, n, K);
+        log(n+" ->");
         while (!shared.compareAndSet(i, e, y));
+        log(n+" <-");
       }
       log(id+": done");
     });
@@ -54,7 +56,7 @@ class Main {
       t[i].start();
     }
     try {
-    for (int i=0; i<K; i++)
+    for (int i=0; i<TS; i++)
       t[i].join();
     }
     catch(InterruptedException e) {}
