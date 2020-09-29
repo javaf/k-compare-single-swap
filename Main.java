@@ -2,7 +2,6 @@ import java.util.*;
 import java.util.concurrent.atomic.*;
 
 class Main {
-  static CountingNetwork bitonic;
   static AtomicInteger[] counts;
   static int WIDTH = 16;
   static int OPS = 1000;
@@ -33,7 +32,7 @@ class Main {
 
   // Initialize bitonic network and counts.
   static void setup() {
-    bitonic = new PeriodicNetwork(WIDTH);
+    bitonic = new KCSS(WIDTH);
     counts = new AtomicInteger[WIDTH];
     for (int i=0; i<WIDTH; i++)
       counts[i] = new AtomicInteger(0);
