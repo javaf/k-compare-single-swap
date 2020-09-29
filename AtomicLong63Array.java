@@ -9,22 +9,20 @@ import java.util.*;
 // consists of a single Balancer.
 class AtomicLong63Array {
   long[] data;
-  ThreadLocal<Long> tag;
-  ThreadLocal<Long> save;
+  long[] tag;
+  long[] save;
+  static final int MAX = 100;
   // width: number of inputs/outputs
 
   public AtomicLong63Array(int length) {
     data = new long[length];
-    tag = new ThreadLocal<>() {
-      protected Long initialValue() {
-        return newTag(0);
-      }
-    };
-    save = new ThreadLocal<>() {
-      protected Long initialValue() {
-        return newValue(0);
-      }
-    };
+    tag = new long[MAX];
+    save = new long[MAX];
+    for (int i=0; i<MAX; i++) {
+      tag[i] = newTag(i);
+      save[i] = newValue(10*i);
+    }
+      System.out.println(Long.toHexString(newTag(0)));
   }
 
   // Gets value at index i.
@@ -48,7 +46,7 @@ class AtomicLong63Array {
     long[] x = new long[N];
     for (int n=0; n<N; n++)
       x[n] = newValue(e[n]);
-    return kcss(i, x, y);
+    return kcss(i, x, newValue(y));
   }
 
 
@@ -60,7 +58,6 @@ class AtomicLong63Array {
   // 3b. Otherwise, store conditional new value.
   // 3c. Retry if that failed.
   private boolean kcss(int[] i, long[] e, long y) {
-    //System.out.println("kcss() ->");
     int N = i.length;
     int[] i1 = Arrays.copyOfRange(i, 1, N);
     long[] e1 = Arrays.copyOfRange(e, 1, N);
@@ -70,13 +67,9 @@ class AtomicLong63Array {
       if (x0 != e[0] ||                  // 3
           Arrays.compare(x1, e1) != 0) { // 3
         sc(i[0], x0); // 3a
-        //System.out.println("kcss() <-");
         return false; // 3a
       }
-      if (sc(i[0], y)) {
-        //System.out.println("kcss() <-");
-        return true; // 3b
-      }
+      if (sc(i[0], y)) return true; // 3b
     } // 3c
   }
 
@@ -89,7 +82,6 @@ class AtomicLong63Array {
   // 5a. If they match, return values.
   // 5b. Otherwise, retry.
   private long[] snapshot(int[] i) {
-    // System.out.println("snapshot() ->");
     while (true) {
       long[] ta = collectTags(i);
       long[] va = collectValues(i);
@@ -97,10 +89,7 @@ class AtomicLong63Array {
       long[] tb = collectTags(i);
       if (Arrays.compare(ta, tb) == 0 &&
           Arrays.compare(va, vb) == 0)
-        {
-          // System.out.println("snapshot() <-");
-          return va;
-        }
+        return va;
     }
   }
 
@@ -127,7 +116,7 @@ class AtomicLong63Array {
   // Store conditional if item at i is tag.
   // 1. Try replace tag at i with item.
   private boolean sc(int i, long y) {
-    return cas(i, tag.get(), y); // 1
+    return cas(i, tag[id()], y); // 1
   }
 
   // Load linked value at i.
@@ -137,15 +126,11 @@ class AtomicLong63Array {
   // 4. Try replacing it with tag.
   // 5. Otherwise, retry.
   private long ll(int i) {
-    //System.out.println("ll("+i+") ->");
     while (true) {
       incTag();
       long x = read(i);
-      save.set(x);
-      if (cas(i, x, tag.get())) {
-        //System.out.println("ll("+i+") <-");
-        return x;
-      }
+      save[id()] = x;
+      if (cas(i, x, tag[id()])) return x;
     }
   }
 
@@ -154,13 +139,9 @@ class AtomicLong63Array {
   // 2. If its not a tag, return its value.
   // 3. Otherwise, reset it and retry.
   private long read(int i) {
-    //System.out.println("read("+i+") ->");
     while (true) {
       long x = data[i];
-      if (!isTag(x)) {
-        //System.out.println("read("+i+") <-");
-        return value(x);
-      }
+      if (!isTag(x)) return value(x);
       reset(i);
     }
   }
@@ -170,7 +151,7 @@ class AtomicLong63Array {
   // 1a. If so, try replacing with saved value.
   private void reset(int i) {
     long x = data[i];
-    if (isTag(x)) cas(i, x, save.get());
+    if (isTag(x)) cas(i, x, save[threadId(x)]);
   }
 
   // Simulates CAS operation.
@@ -179,9 +160,9 @@ class AtomicLong63Array {
   // 1b. Otherwise, update value (success).
   private boolean cas(int i, long e, long y) {
     synchronized (data) {
-      if (data[i] != e) return false;
-      data[i] = y;
-      return true;
+      if (data[i] != e) return false; // 1, 1a
+      data[i] = y; // 1b
+      return true; // 1b
     }
   }
 
@@ -189,15 +170,14 @@ class AtomicLong63Array {
   // 1. Get current tag id.
   // 2. Increment tag id.
   private void incTag() {
-    long id = tagId(tag.get()); // 1
-    tag.set(newTag(id+1));      // 2
+    long id = tagId(tag[id()]); // 1
+    tag[id()] = newTag(id+1);      // 2
   }
-
 
   // Creates new value.
   // 1. Clear b63.
   private long newValue(long v) {
-    return (v<<1) >>> 1;
+    return (v<<1) >>> 1; // 1
   }
 
   // Checks if item is a value.
@@ -217,7 +197,8 @@ class AtomicLong63Array {
   // 2. Set thread-id from b62-b48.
   // 3. Set tag-id from b47-b0.
   private long newTag(long id) {
-    long th = Thread.currentThread().getId();
+    long th = id();
+    if (id == 0) System.out.println("TG"+(th<<48));
     return (1<<63) | (th<<48) | id; // 1, 2, 3
   }
 
@@ -229,8 +210,10 @@ class AtomicLong63Array {
 
   // Gets thread-id from item (tag).
   // 1. Get 15-bits from b62-b48.
-  private long threadId(long x) {
-    return (x>>>48) & 0x7FFF; // 1
+  private int threadId(long x) {
+    int th = (int) ((x>>>48) & 0x7FFF); // 1
+    if (th > 100) System.out.println("x="+Long.toHexString(x)+", th="+th);
+    return th;
   }
 
   // Gets tag-id from item (tag).
@@ -239,11 +222,19 @@ class AtomicLong63Array {
     return x & 0xFFFFFFFFFFFFL; // 1
   }
 
+  private static int id() {
+    int th = (int) Thread.currentThread().getId();
+    if (th>100) System.out.println(th);
+    return th;
+  }
+
   @Override
   public String toString() {
     StringBuilder a = new StringBuilder("{");
+    synchronized (data) {
     for (int n=0; n<data.length; n++)
       a.append(get(n)).append(", ");
+    }
     if (a.length()>1) a.setLength(a.length()-2);
     a.append("}");
     return a.toString();

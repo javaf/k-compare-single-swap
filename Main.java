@@ -3,8 +3,8 @@ import java.util.concurrent.atomic.*;
 
 class Main {
   static AtomicLong63Array shared;
-  static int TS = 1;
-  static int K = 5;
+  static int TS = 3;
+  static int K = 6;
   // bitonic: bitonic counting network of WIDTH
   // counts: atomic integers incremented by threads
   // WIDTH: number of threads / width of network
@@ -17,8 +17,10 @@ class Main {
   static Thread withoutKCSS(int id) {
     return new Thread(() -> {
       long y = id+1;
-      for (int n=0; n<K; n++)
+      for (int n=0; n<K; n++) {
         shared.set(n, y);
+        Thread.yield();
+      }
       log(id+": done");
     });
   } 
@@ -29,6 +31,8 @@ class Main {
   // should be balanced.
   static Thread withKCSS(int id) {
     return new Thread(() -> {
+      long th = Thread.currentThread().getId();
+      log(id+": th="+th);
       int[] I = new int[K];
       long[] E = new long[K];
       for (int n=0; n<K; n++) {
@@ -39,11 +43,11 @@ class Main {
       for (int n=0; n<K; n++) {
         int[] i = Arrays.copyOfRange(I, n, K);
         long[] e = Arrays.copyOfRange(E, n, K);
-        //log(n+" ->");
-        //log(shared.toString());
-        while (!shared.compareAndSet(i, e, y));
-        //log(shared.toString());
-        //log(n+" <-");
+        log(id+"> "+n);
+        log(id+"> "+shared);
+        while (!shared.compareAndSet(i, e, y))          Thread.yield();
+        log(id+"< "+shared);
+        log(id+"< "+n);
       }
       log(id+": done");
     });
