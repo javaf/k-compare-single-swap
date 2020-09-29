@@ -27,8 +27,9 @@ class Main {
   } 
 
   // Each thread with KCSS updates all entries
-  // of `shared` array to `id+1` only if all entries
-  // are currently set to `id` (k-comparisions).
+  // of `shared` array to `id+1` only if all
+  // entries/ are currently set to `id`
+  // (k-comparisions).
   static Thread withKCSS(int id) {
     int[] I = new int[K];
     long[] E = new long[K];
@@ -42,7 +43,8 @@ class Main {
       for (int n=0; n<K; n++) {
         int[] i = Arrays.copyOfRange(I, n, K);
         long[] e = Arrays.copyOfRange(E, n, K);
-        while (!shared.compareAndSet(i, e, y))          Thread.sleep(1);
+        while (!shared.compareAndSet(i, e, y))
+          Thread.sleep(1);
       }
       log(id+": done");
       }
