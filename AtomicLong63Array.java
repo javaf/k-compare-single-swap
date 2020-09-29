@@ -116,7 +116,7 @@ class AtomicLong63Array {
   // Store conditional if item at i is tag.
   // 1. Try replace tag at i with item.
   private boolean sc(int i, long y) {
-    return cas(i, tag[id()], y); // 1
+    return cas(i, tag[th()], y); // 1
   }
 
   // Load linked value at i.
@@ -129,8 +129,8 @@ class AtomicLong63Array {
     while (true) {
       incTag();
       long x = read(i);
-      save[id()] = x;
-      if (cas(i, x, tag[id()])) return x;
+      save[th()] = x;
+      if (cas(i, x, tag[th()])) return x;
     }
   }
 
@@ -170,25 +170,25 @@ class AtomicLong63Array {
   // 1. Get current tag id.
   // 2. Increment tag id.
   private void incTag() {
-    long id = tagId(tag[id()]); // 1
-    tag[id()] = newTag(id+1);      // 2
+    long id = tagId(tag[th()]); // 1
+    tag[th()] = newTag(id+1);      // 2
   }
 
   // Creates new value.
   // 1. Clear b63.
-  private long newValue(long v) {
+  private static long newValue(long v) {
     return (v<<1) >>> 1; // 1
   }
 
   // Checks if item is a value.
   // 1. Check is b63 is not set.
-  private boolean isValue(long x) {
+  private static boolean isValue(long x) {
     return x >= 0; // 1
   }
 
   // Gets value from item (value).
   // 1. Copy sign from b62.
-  private long value(long x) {
+  private static long value(long x) {
     return (x<<1) >> 1; // 1
   }
 
@@ -196,10 +196,8 @@ class AtomicLong63Array {
   // 1. Set b63.
   // 2. Set thread-id from b62-b48.
   // 3. Set tag-id from b47-b0.
-  private long newTag(long id) {
-    long th = id();
-    if (id == 0) System.out.println("TG"+(th<<48));
-    return (1<<63) | (th<<48) | id; // 1, 2, 3
+  private static long newTag(long id) {
+    return (1L<<63) | ((long)th()<<48) | id; // 1, 2, 3
   }
 
   // Checks if item is a tag.
@@ -210,22 +208,19 @@ class AtomicLong63Array {
 
   // Gets thread-id from item (tag).
   // 1. Get 15-bits from b62-b48.
-  private int threadId(long x) {
-    int th = (int) ((x>>>48) & 0x7FFF); // 1
-    if (th > 100) System.out.println("x="+Long.toHexString(x)+", th="+th);
-    return th;
+  private static int threadId(long x) {
+    return (int) ((x>>>48) & 0x7FFF); // 1
   }
 
   // Gets tag-id from item (tag).
   // 1. Get 48-bits from b47-b0.
-  private long tagId(long x) {
+  private static long tagId(long x) {
     return x & 0xFFFFFFFFFFFFL; // 1
   }
 
-  private static int id() {
-    int th = (int) Thread.currentThread().getId();
-    if (th>100) System.out.println(th);
-    return th;
+  // Gets current thread-id as integer.
+  private static int th() {
+    return (int) Thread.currentThread().getId();
   }
 
   @Override

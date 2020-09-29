@@ -3,8 +3,8 @@ import java.util.concurrent.atomic.*;
 
 class Main {
   static AtomicLong63Array shared;
-  static int TS = 3;
-  static int K = 6;
+  static int TS = 25;
+  static int K = 10;
   // bitonic: bitonic counting network of WIDTH
   // counts: atomic integers incremented by threads
   // WIDTH: number of threads / width of network
