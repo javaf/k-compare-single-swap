@@ -7,7 +7,7 @@ import java.util.*;
 // inputs. Outputs of both Bitonic[K] are connected
 // directly to Merger[2K]. Bitonic[2] networks
 // consists of a single Balancer.
-class AtomicLong63Array implements Iterable {
+class AtomicLong63Array implements Iterable<Long> {
   long[] data;
   ThreadLocal<Long> tag;
   ThreadLocal<Long> save;
@@ -237,5 +237,13 @@ class AtomicLong63Array implements Iterable {
   // 1. Get 48-bits from b47-b0.
   private long tagId(long x) {
     return x & 0xFFFFFFFFFFFFL; // 1
+  }
+
+  @Override
+  public Iterator<Long> iterator() {
+    List<Long> a = new ArrayList<>();
+    for (int n=0; n<data.length; n++)
+      a.add(value(n));
+    return a.iterator();
   }
 }
