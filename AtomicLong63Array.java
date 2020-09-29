@@ -1,8 +1,8 @@
 import java.util.*;
 
-// k-compare single-swap (KCSS) is an extension of CAS
-// that enables atomically checking multiple addresses
-// before making an update.
+// k-compare single-swap (KCSS) is an extension of
+// CAS that enables atomically checking multiple
+// addresses before making an update.
 // 
 // AtomicLong63Array provides an array capable of
 // storing 63-bit long values, and supports basic
