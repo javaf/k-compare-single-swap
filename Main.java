@@ -4,7 +4,7 @@ import java.util.concurrent.atomic.*;
 class Main {
   static AtomicLong63Array shared;
   static int TS = 1;
-  static int K = 20;
+  static int K = 5;
   // bitonic: bitonic counting network of WIDTH
   // counts: atomic integers incremented by threads
   // WIDTH: number of threads / width of network
@@ -29,19 +29,21 @@ class Main {
   // should be balanced.
   static Thread withKCSS(int id) {
     return new Thread(() -> {
-      int[] i = new int[K];
-      long[] e = new long[K];
+      int[] I = new int[K];
+      long[] E = new long[K];
       for (int n=0; n<K; n++) {
-        i[n] = n;
-        e[n] = id;
+        I[n] = n;
+        E[n] = id;
       }
       long y = id+1;
       for (int n=0; n<K; n++) {
-        i = Arrays.copyOfRange(i, n, K);
-        e = Arrays.copyOfRange(e, n, K);
-        log(n+" ->");
+        int[] i = Arrays.copyOfRange(I, n, K);
+        long[] e = Arrays.copyOfRange(E, n, K);
+        //log(n+" ->");
+        //log(shared.toString());
         while (!shared.compareAndSet(i, e, y));
-        log(n+" <-");
+        //log(shared.toString());
+        //log(n+" <-");
       }
       log(id+": done");
     });
@@ -65,7 +67,7 @@ class Main {
   // Check if shared data was updated atomically.
   static boolean wasAtomic() {
     for (int n=0; n<K; n++)
-      if (shared.get(n) != K-1) return false;
+      if (shared.get(n) != TS) return false;
     return true;
   }
 
@@ -75,11 +77,12 @@ class Main {
   public static void main(String[] args) {
     log("Starting threads without KCSS ...");
     testThreads(false);
+    log(""+shared);
     log("Updates were atomic? "+wasAtomic());
     log("");
     log("Starting threads with KCSS ...");
     testThreads(true);
-    // log(Arrays.deepToString(counts));
+    log(""+shared);
     log("Updates were atomic? "+wasAtomic());
   }
 
