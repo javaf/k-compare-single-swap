@@ -5,51 +5,48 @@ class Main {
   static AtomicLong63Array shared;
   static int TS = 25;
   static int K = 10;
-  // bitonic: bitonic counting network of WIDTH
-  // counts: atomic integers incremented by threads
-  // WIDTH: number of threads / width of network
-  // OPS: number of increments
+  // shared: shared array of length K
+  // TS: number of threads
+  // K: number of comparisions
 
 
-  // Each unbalanced thread tries to increment a
-  // random count. At the end, the counts would
-  // not be balanced.
+  // Each thread without KCSS updates all entries
+  // of `shared` array to `id+1`.
   static Thread withoutKCSS(int id) {
+    long y = id+1;
     return new Thread(() -> {
-      long y = id+1;
+      try {
       for (int n=0; n<K; n++) {
         shared.set(n, y);
-        Thread.yield();
+        Thread.sleep(1);
       }
       log(id+": done");
+      }
+      catch (InterruptedException e) {}
     });
   } 
 
-  // Each balanced thread tries to increment a
-  // random count, but this time, selected through
-  // a bitonic network. At the end, the counts
-  // should be balanced.
+  // Each thread with KCSS updates all entries
+  // of `shared` array to `id+1` only if all entries
+  // are currently set to `id` (k-comparisions).
   static Thread withKCSS(int id) {
+    int[] I = new int[K];
+    long[] E = new long[K];
+    for (int n=0; n<K; n++) {
+      I[n] = n;
+      E[n] = id;
+    }
+    long y = id+1;
     return new Thread(() -> {
-      long th = Thread.currentThread().getId();
-      log(id+": th="+th);
-      int[] I = new int[K];
-      long[] E = new long[K];
-      for (int n=0; n<K; n++) {
-        I[n] = n;
-        E[n] = id;
-      }
-      long y = id+1;
+      try {
       for (int n=0; n<K; n++) {
         int[] i = Arrays.copyOfRange(I, n, K);
         long[] e = Arrays.copyOfRange(E, n, K);
-        log(id+"> "+n);
-        log(id+"> "+shared);
-        while (!shared.compareAndSet(i, e, y))          Thread.yield();
-        log(id+"< "+shared);
-        log(id+"< "+n);
+        while (!shared.compareAndSet(i, e, y))          Thread.sleep(1);
       }
       log(id+": done");
+      }
+      catch (InterruptedException e) {}
     });
   }
 
@@ -75,15 +72,15 @@ class Main {
     return true;
   }
 
-  // Test both unbalanced and balanced threads
-  // to check if counts stay balanced after they
-  // run their increments.
+  // Test both threads without and with KCSS
+  // to check if shared data was updated atomically.
   public static void main(String[] args) {
     log("Starting threads without KCSS ...");
     testThreads(false);
     log(""+shared);
     log("Updates were atomic? "+wasAtomic());
     log("");
+    
     log("Starting threads with KCSS ...");
     testThreads(true);
     log(""+shared);

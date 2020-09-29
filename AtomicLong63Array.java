@@ -1,52 +1,65 @@
 import java.util.*;
 
-// Each Bitonic[2K] consists of 2 Bitonic[K]
-// networks followed by a Merger[2K]. The top
-// Bitonic[K] is connected to top-half inputs, and
-// bottom Bitonic[K] is connected to bottom-half
-// inputs. Outputs of both Bitonic[K] are connected
-// directly to Merger[2K]. Bitonic[2] networks
-// consists of a single Balancer.
-class AtomicLong63Array {
+// k-compare single-swap (KCSS) is an extension of CAS
+// that enables atomically checking multiple addresses
+// before making an update.
+// 
+// AtomicLong63Array provides an array capable of
+// storing 63-bit long values, and supports basic
+// accessor functions like get(), set() and atomic
+// operations like compareAndSet() with either one
+// comparision or k-comparisions. The main purpose
+// of this class is to demonstrate k-compare
+// single-swap (KCSS).
+class AtomicLong63Array implements Iterable<Long> {
+  static final int MAX_THREAD_ID = 1024;
   long[] data;
   long[] tag;
   long[] save;
-  static final int MAX = 100;
-  // width: number of inputs/outputs
+  // data: contains marked values / tags
+  // tag: current tag of respective thread
+  // save: current saved value of respective thread
 
   public AtomicLong63Array(int length) {
+    int T = MAX_THREAD_ID;
     data = new long[length];
-    tag = new long[MAX];
-    save = new long[MAX];
-    for (int i=0; i<MAX; i++) {
-      tag[i] = newTag(i);
-      save[i] = newValue(10*i);
-    }
-      System.out.println(Long.toHexString(newTag(0)));
+    tag = new long[T];
+    save = new long[T];
   }
 
   // Gets value at index i.
+  // 1. Read value at i (reset if needed).
   public long get(int i) {
     return read(i);
   }
 
   // Sets value at index i.
+  // 1. Convert target value to marked value.
+  // 2. Store into internal array.
   public void set(int i, long v) {
     data[i] = newValue(v);
   }
 
+  // Performs compare-and-set at index i.
+  // 1. Convert expected value to marked value.
+  // 2. Convert target value to marked value.
+  // 3. Perform CAS.
   public boolean compareAndSet
     (int i, long e, long y) {
-    return cas(i, newValue(e), newValue(y));
+    return cas(i, newValue(e), newValue(y)); // 1, 2, 3
   }
 
+  // Performs k-compare-and-set at indices i.
+  // 1. Convert expected values to marked values.
+  // 2. Convert target value to marked value.
+  // 3. Perform KCSS.
   public boolean compareAndSet
     (int[] i, long[] e, long y) {
-    int N = i.length;
-    long[] x = new long[N];
-    for (int n=0; n<N; n++)
-      x[n] = newValue(e[n]);
-    return kcss(i, x, newValue(y));
+    int I = i.length;        // 1
+    long[] x = new long[I];  // 1
+    for (int o=0; o<I; o++)  // 1
+      x[o] = newValue(e[o]); // 1
+    return kcss(i, x, newValue(y)); // 2, 3
   }
 
 
@@ -58,16 +71,14 @@ class AtomicLong63Array {
   // 3b. Otherwise, store conditional new value.
   // 3c. Retry if that failed.
   private boolean kcss(int[] i, long[] e, long y) {
-    int N = i.length;
-    int[] i1 = Arrays.copyOfRange(i, 1, N);
-    long[] e1 = Arrays.copyOfRange(e, 1, N);
+    int I = i.length;
+    long[] x = new long[I];
     while (true) {
-      long x0 = ll(i[0]);       // 1
-      long[] x1 = snapshot(i1); // 2
-      if (x0 != e[0] ||                  // 3
-          Arrays.compare(x1, e1) != 0) { // 3
-        sc(i[0], x0); // 3a
-        return false; // 3a
+      x[0] = ll(i[0]);      // 1
+      snapshot(i, 1, I, x); // 2
+      if (Arrays.compare(x, e) != 0) { // 3
+        sc(i[0], x[0]); // 3a
+        return false;   // 3a
       }
       if (sc(i[0], y)) return true; // 3b
     } // 3c
@@ -81,36 +92,38 @@ class AtomicLong63Array {
   // 5. Check if both tags and values match.
   // 5a. If they match, return values.
   // 5b. Otherwise, retry.
-  private long[] snapshot(int[] i) {
-    while (true) {
-      long[] ta = collectTags(i);
-      long[] va = collectValues(i);
-      long[] vb = collectValues(i);
-      long[] tb = collectTags(i);
-      if (Arrays.compare(ta, tb) == 0 &&
-          Arrays.compare(va, vb) == 0)
-        return va;
-    }
+  private void snapshot
+    (int[] i, int i0, int i1, long[] V) {
+    int I = i.length;
+    long[] va = V;
+    long[] vb = new long[I];
+    long[] ta = new long[I];
+    long[] tb = new long[I];
+    do {
+      collectTags(i, i0, i1, ta);
+      collectValues(i, i0, i1, va);
+      collectValues(i, i0, i1, vb);
+      collectTags(i, i0, i1, tb);
+    } while(
+      Arrays.compare(ta, i0, i1, tb, i0, i1) != 0 ||
+      Arrays.compare(va, i0, i1, vb, i0, i1) != 0
+    );
   }
 
   // Reads tags at indices i.
   // 1. For each index, read its tag.
-  private long[] collectTags(int[] i) {
-    int N = i.length;
-    long[] t = new long[N];
-    for (int n=0; n<N; n++) // 1
-      t[n] = data[i[n]];  // 1
-    return t;
+  private void collectTags
+    (int[] i, int i0, int i1, long[] T) {
+    for (int o=i0; o<i1; o++) // 1
+      T[o] = data[i[o]];    // 1
   }
 
   // Reads values at indices is.
   // 1. For each index, read its value.
-  private long[] collectValues(int[] i) {
-    int N = i.length;
-    long[] v = new long[N];
-    for (int n=0; n<N; n++) // 1
-      v[n] = read(i[n]);  // 1
-    return v;
+  private void collectValues
+    (int[] i, int i0, int i1, long[] V) {
+    for (int o=i0; o<i1; o++) // 1
+      V[o] = read(i[o]);    // 1
   }
 
   // Store conditional if item at i is tag.
@@ -151,7 +164,8 @@ class AtomicLong63Array {
   // 1a. If so, try replacing with saved value.
   private void reset(int i) {
     long x = data[i];
-    if (isTag(x)) cas(i, x, save[threadId(x)]);
+    if (isTag(x))
+      cas(i, x, save[threadId(x)]);
   }
 
   // Simulates CAS operation.
@@ -174,6 +188,43 @@ class AtomicLong63Array {
     tag[th()] = newTag(id+1);      // 2
   }
 
+  // Gets current thread-id as integer.
+  private static int th() {
+    return (int) Thread.currentThread().getId();
+  }
+
+
+  // SUPPORT
+  // -------
+  // Gets length of array.
+  public int length() {
+    return data.length;
+  }
+
+  // Gets iterator to values in array.
+  @Override
+  public Iterator<Long> iterator() {
+    Collection<Long> c = new ArrayList<>();
+    synchronized (data) {
+      for (int i=0; i<data.length; i++)
+        c.add(get(i));
+    }
+    return c.iterator();
+  }
+
+  // Converts array to string.
+  @Override
+  public String toString() {
+    StringBuilder s = new StringBuilder("{");
+    for (Long v : this)
+      s.append(v).append(", ");
+    if (s.length()>1) s.setLength(s.length()-2);
+    return s.append("}").toString();
+  }
+
+
+  // VALUE
+  // -----
   // Creates new value.
   // 1. Clear b63.
   private static long newValue(long v) {
@@ -183,7 +234,7 @@ class AtomicLong63Array {
   // Checks if item is a value.
   // 1. Check is b63 is not set.
   private static boolean isValue(long x) {
-    return x >= 0; // 1
+    return x >= 0L; // 1
   }
 
   // Gets value from item (value).
@@ -192,46 +243,33 @@ class AtomicLong63Array {
     return (x<<1) >> 1; // 1
   }
 
+
+  // TAG
+  // ---
   // Creates a new tag.
   // 1. Set b63.
   // 2. Set thread-id from b62-b48.
   // 3. Set tag-id from b47-b0.
   private static long newTag(long id) {
-    return (1L<<63) | ((long)th()<<48) | id; // 1, 2, 3
+    long th = Thread.currentThread().getId();
+    return (1L<<63) | (th<<48) | id; // 1, 2, 3
   }
 
   // Checks if item is a tag.
   // 1. Check if b63 is set.
-  private boolean isTag(long x) {
-    return x < 0; // 1
+  private static boolean isTag(long x) {
+    return x < 0L; // 1
   }
 
   // Gets thread-id from item (tag).
   // 1. Get 15-bits from b62-b48.
   private static int threadId(long x) {
-    return (int) ((x>>>48) & 0x7FFF); // 1
+    return (int) ((x>>>48) & 0x7FFFL); // 1
   }
 
   // Gets tag-id from item (tag).
   // 1. Get 48-bits from b47-b0.
   private static long tagId(long x) {
     return x & 0xFFFFFFFFFFFFL; // 1
-  }
-
-  // Gets current thread-id as integer.
-  private static int th() {
-    return (int) Thread.currentThread().getId();
-  }
-
-  @Override
-  public String toString() {
-    StringBuilder a = new StringBuilder("{");
-    synchronized (data) {
-    for (int n=0; n<data.length; n++)
-      a.append(get(n)).append(", ");
-    }
-    if (a.length()>1) a.setLength(a.length()-2);
-    a.append("}");
-    return a.toString();
   }
 }
