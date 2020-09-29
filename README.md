@@ -1,66 +1,131 @@
-Bitonic network is a balanced counting network that
-allows processes to decompose operations, like
-counting, and reduce memory contention.
+k-compare single-swap (KCSS) is an extension of CAS
+that enables atomically checking multiple addresses
+before making an update.
+
+AtomicLong63Array provides an array capable of
+storing 63-bit long values, and supports basic
+accessor functions like `get()`, `set()` and atomic
+operations like `compareAndSet()` with either one
+comparision or k-comparisions. The main purpose
+of this class is to demonstrate k-compare
+single-swap (KCSS).
 
 ```java
-Balancer:
-A Balancer is a simple switch with two input
-and two output wires. Tokens arrive on the
-Balancer’s input wires at arbitrary times,
-and emerge on their output wires, at some later
-Given a stream of input tokens, it sends one
-token to the top output wire, and the next to
-the bottom, and so on, effectively balancing the
-number of tokens between the two wires.
-
-Balancer.traverse():
-1. Flip balancer state.
-2. Return the updated state.
+get(i):
+Gets value at index i.
+1. Read value at i (reset if needed).
 ```
 
 ```java
-MergerNetwork:
-Each Merger[2K] consists of 2 Merger[K] networks
-followed by a layer of Balancers. The top
-Merger[K] takes even inputs from top-half and
-odd inputs from bottom-half. The bottom
-Merger[K] takes odd inputs from top-half and
-even inputs form bottom half. The respective
-output of each Merger[K] is then combined with
-a Balancer. When K is 1, Merger[2K] is a single
-Balancer.
-
-MergerNetwork.traverse():
-1. Find connected Merger[K].
-2. Traverse connected Merger[K].
-3. Traverse connected balancer.
+set(i, v):
+Sets value at index i.
+1. Convert target value to marked value.
+2. Store into internal array.
 ```
 
 ```java
-BitonicNetwork:
-Each Bitonic[2K] consists of 2 Bitonic[K]
-networks followed by a Merger[2K]. The top
-Bitonic[K] is connected to top-half inputs, and
-bottom Bitonic[K] is connected to bottom-half
-inputs. Outputs of both Bitonic[K] are connected
-directly to Merger[2K]. Bitonic[2] networks
-consists of a single Balancer.
-
-BitonicNetwork.traverse():
-1. Find connected Bitonic[K].
-2. Traverse connected Bitonic[K].
-3. Traverse connected Merger[2K].
+compareAndSet(i, e, y):
+Performs compare-and-set at index i.
+1. Convert expected value to marked value.
+2. Convert target value to marked value.
+3. Perform CAS.
 ```
 
-See [Balancer.java], [MergerNetwork.java],
-[BitonicNetwork.java] for code, [Main.java] for
+```java
+compareAndSet(i[], e[], y):
+Performs k-compare-and-set at indices i.
+1. Convert expected values to marked values.
+2. Convert target value to marked value.
+3. Perform KCSS.
+```
+
+```java
+-kcss(i[], e[], y):
+Performs k-compare-single-swap at indices i.
+1. Load linked value at i0.
+2. Snapshot values at i1-rest.
+3. Check if captured values match expected.
+3a. If a value didnt match, restore (fail).
+3b. Otherwise, store conditional new value.
+3c. Retry if that failed.
+```
+
+```java
+-snapshot(i[], i0, i1, V[]):
+Collects snapshot at indices i.
+1. Collect old tags at i.
+2. Collect old values at i.
+3. Collect new values at i.
+4. Collect new tags at i.
+5. Check if both tags and values match.
+5a. If they match, return values.
+5b. Otherwise, retry.
+```
+
+```java
+-collectTags(i[], i0, i1, T[]):
+Reads tags at indices i.
+1. For each index, read its tag.
+```
+
+```java
+-collectValues(i[], i0, i1, V[]:
+Reads values at indices is.
+1. For each index, read its value.
+```
+
+```java
+-sc(i, y):
+Store conditional if item at i is tag.
+1. Try replace tag at i with item.
+```
+
+```java
+-ll(i):
+Load linked value at i.
+1. Increment current tag.
+2. Read value at i.
+3. Save the value.
+4. Try replacing it with tag.
+5. Otherwise, retry.
+```
+
+```java
+-read(i):
+Reads value at i.
+1. Get item at i.
+2. If its not a tag, return its value.
+3. Otherwise, reset it and retry.
+```
+
+```java
+-reset(i):
+Resets item at i to value.
+1. Check if item is a tag.
+1a. If so, try replacing with saved value.
+```
+
+```java
+-cas(i, e, y):
+Simulates CAS operation.
+1. Check if expected value is present.
+1a. If not present, exit (fail).
+1b. Otherwise, update value (success).
+```
+
+```java
+-incTag():
+Increments this thread's tag.
+1. Get current tag id.
+2. Increment tag id.
+```
+
+See [AtomicLong63Array.java] for code, [Main.java] for
 test, and [repl.it] for output.
 
-[Balancer.java]: https://repl.it/@wolfram77/bitonic-network#Balancer.java
-[MergerNetwork.java]: https://repl.it/@wolfram77/bitonic-network#MergerNetwork.java
-[BitonicNetwork.java]: https://repl.it/@wolfram77/bitonic-network#BitonicNetwork.java
-[Main.java]: https://repl.it/@wolfram77/bitonic-network#Main.java
-[repl.it]: https://bitonic-network.wolfram77.repl.run
+[AtomicLong63Array.java]: https://repl.it/@wolfram77/k-compare-single-swap#AtomicLong63Array.java
+[Main.java]: https://repl.it/@wolfram77/k-compare-single-swap#Main.java
+[repl.it]: https://k-compare-single-swap.wolfram77.repl.run
 
 
 ### references
