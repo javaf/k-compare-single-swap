@@ -120,6 +120,67 @@ Increments this thread's tag.
 2. Increment tag id.
 ```
 
+```bash
+## OUTPUT
+Starting 25 threads without KCSS ...
+5: done
+6: done
+20: done
+1: done
+9: done
+8: done
+3: done
+2: done
+22: done
+18: done
+16: done
+21: done
+4: done
+13: done
+0: done
+11: done
+12: done
+17: done
+14: done
+10: done
+19: done
+7: done
+24: done
+15: done
+23: done
+{19, 25, 24, 24, 24, 24, 24, 24, 24, 24}
+Updates were atomic? false
+
+Starting 25 threads with KCSS ...
+0: done
+1: done
+2: done
+3: done
+5: done
+4: done
+6: done
+7: done
+8: done
+9: done
+10: done
+19: done
+18: done
+17: done
+16: done
+15: done
+14: done
+13: done
+12: done
+11: done
+21: done
+20: done
+22: done
+23: done
+24: done
+{25, 25, 25, 25, 25, 25, 25, 25, 25, 25}
+Updates were atomic? true
+```
+
 See [AtomicLong63Array.java] for code, [Main.java] for
 test, and [repl.it] for output.
 

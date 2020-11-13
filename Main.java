@@ -28,7 +28,7 @@ class Main {
 
   // Each thread with KCSS updates all entries
   // of `shared` array to `id+1` only if all
-  // entries/ are currently set to `id`
+  // entries are currently set to `id`
   // (k-comparisions).
   static Thread withKCSS(int id) {
     int[] I = new int[K];
@@ -77,13 +77,13 @@ class Main {
   // Test both threads without and with KCSS
   // to check if shared data was updated atomically.
   public static void main(String[] args) {
-    log("Starting threads without KCSS ...");
+    log("Starting "+TS+" threads without KCSS ...");
     testThreads(false);
     log(""+shared);
     log("Updates were atomic? "+wasAtomic());
     log("");
     
-    log("Starting threads with KCSS ...");
+    log("Starting "+TS+" threads with KCSS ...");
     testThreads(true);
     log(""+shared);
     log("Updates were atomic? "+wasAtomic());
