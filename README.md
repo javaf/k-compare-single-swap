@@ -10,6 +10,12 @@ comparision or k-comparisions. The main purpose
 of this class is to demonstrate k-compare
 single-swap (KCSS).
 
+> **Course**: [Concurrent Data Structures], Monsoon 2020<br>
+> **Taught by**: Prof. Govindarajulu Regeti
+<br>
+
+[Concurrent Data Structures]: https://github.com/iiithf/concurrent-data-structures
+
 ```java
 get(i):
 Gets value at index i.
@@ -191,4 +197,4 @@ test, and [repl.it] for output.
 
 ### references
 
-- [The Art of Multiprocessor Programming :: Maurice Herlihy, Nir Shavit](https://dl.acm.org/doi/book/10.5555/2385452)
+- [Nonblocking k-compare-single-swap :: V. Luchangco, M. Moir, and N. Shavit](https://dl.acm.org/doi/10.1145/777412.777468)
