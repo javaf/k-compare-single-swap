@@ -10,9 +10,8 @@ comparision or k-comparisions. The main purpose
 of this class is to demonstrate k-compare
 single-swap (KCSS).
 
-> **Course**: [Concurrent Data Structures], Monsoon 2020<br>
+> **Course**: [Concurrent Data Structures], Monsoon 2020\
 > **Taught by**: Prof. Govindarajulu Regeti
-<br>
 
 [Concurrent Data Structures]: https://github.com/iiithf/concurrent-data-structures
 
