@@ -199,3 +199,4 @@ test, and [repl.it] for output.
 - [Nonblocking k-compare-single-swap :: V. Luchangco, M. Moir, and N. Shavit](https://dl.acm.org/doi/10.1145/777412.777468)
 
 ![](https://ga-beacon.deno.dev/G-G1E8HNDZYY:v51jklKGTLmC3LAZ4rJbIQ/github.com/javaf/k-compare-single-swap)
+![](https://ga-beacon.deno.dev/G-G1E8HNDZYY:v51jklKGTLmC3LAZ4rJbIQ/github.com/moocf/k-compare-single-swap.java)
